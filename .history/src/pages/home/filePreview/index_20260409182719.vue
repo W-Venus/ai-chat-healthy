@@ -1,0 +1,168 @@
+<template>
+  <div class="file-chunk-text-preview">
+    <input type="file" @change="handleFileChange" />
+    <label style="display: block; margin: 8px 0;">
+      <input type="checkbox" v-model="autoChunk" /> 自动分段（每段 {{ chunkSizeMB }} MB）
+    </label>
+    <button @click="previewFile" :disabled="!selectedFile">预览内容</button>
+
+    <div v-if="error" class="error">{{ error }}</div>
+
+    <!-- 渲染所有分段的文本内容 -->
+    <div v-if="chunkContents.length > 0" class="preview-list">
+      <div
+        v-for="(content, index) in chunkContents"
+        :key="index"
+        class="chunk-content-item"
+      >
+        <h4>📄 分段 {{ index + 1 }} / {{ chunkContents.length }}</h4>
+        <p class="meta">
+          大小: {{ formatFileSize(content.size) }}
+          <span v-if="content.isTruncated" style="color: orange;">（已截断）</span>
+        </p>
+        <p class="content">{{ content.text }}</p>
+      </div>
+    </div>
+
+    <div v-else-if="previewTriggered && chunkContents.length === 0" class="no-content">
+      所有分段均无法读取为文本（可能是二进制文件）。
+    </div>
+  </div>
+</template>
+<script setup lang="ts">
+import { ref } from 'vue'
+
+interface ChunkContent {
+  size: number
+  text: string
+  isTruncated: boolean
+}
+// 选择的文件
+const selectedFile = ref<File | null>(null)
+  // 是否自动分段
+const autoChunk = ref<boolean>(false)
+  // 切片内容数组
+const chunkContents = ref<ChunkContent[]>([])
+const error = ref<string>('')
+  // 是否触发预览
+const previewTriggered = ref<boolean>(false)
+  // 切片大小
+const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB
+const chunkSizeMB = 5
+const MAX_TEXT_PREVIEW_SIZE = 10 * 1024 // 最多预览前 10KB 文本，避免卡顿
+
+function handleFileChange(event: Event): void {
+  const input = event.target as HTMLInputElement
+  selectedFile.value = input.files?.[0] || null
+  error.value = ''
+  chunkContents.value = []
+  previewTriggered.value = false
+}
+
+// 将字节数格式化为合适的文件大小单位字符串。
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+
+function readBlobAsText(blob: Blob): Promise<{ text: string; isTruncated: boolean }>  {
+  const maxSize = MAX_TEXT_PREVIEW_SIZE
+  if(blob.size <= maxSize) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        resolve({
+          text: reader.result as string,
+          isTruncated: false,
+        })
+      }
+      reader.onerror = () => reject(new Error('读取失败'))
+      reader.readAsText(blob)
+      // reader.readAsText  不适合大文件读取，大文件建议使用readAsArrayBuffer。这里 因为限制了大小10kb，所以没问题
+    })
+  }else {
+    // 只读前 maxSize 字节
+    const headBlob = blob.slice(0, maxSize)
+    return new Promise((resolve, reject) => { 
+      const reader = new FileReader()
+      reader.onload = () => {
+        resolve({
+          text: (reader.result as string) + '\n\n...（后续内容已省略）',
+          isTruncated: true,
+        })
+      }
+      reader.onerror = () => reject(new Error('读取失败'))
+      reader.readAsText(headBlob)
+    })
+  }
+}
+
+
+function previewFile(): Promise<void> {
+  previewTriggered.value = true
+  chunkContents.value = []
+  error.value = ''
+
+  if (!selectedFile.value) {
+   error.value = '请先选择一个文件'
+    return 
+  }
+
+  const file = selectedFile.value
+  let blobs: Blob[] = []
+
+  if (autoChunk.value) {
+    // 自动分段   Math.ceil 向上取整
+    const total = Math.ceil(file.size / CHUNK_SIZE)
+
+    for (let i = 0; i < total; i++) {
+      const start = i * CHUNK_SIZE
+      // Math.min 返回一组数中的最小值
+      const end = Math.min(start + CHUNK_SIZE, file.size)
+      blobs.push(file.slice(start, end, file.type))
+    }
+  } else {
+    // 不分段
+    blobs = [file]
+  }
+
+  console.log('blobs', blobs)
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const handleSuccess = () => {
+  console.log('handleSuccess')
+}
+
+
+
+
+
+</script>
+
+<style lang="scss" scoped>
+  
+</style>
