@@ -1,6 +1,8 @@
 <template>
   <div class="markdown-content" :class="{ 'ai-markdown': isAiMessage }">
-    <div v-html="renderedContent"></div>
+    <!-- <div v-html="renderedContent"></div> -->
+    <v-md-preview :text="props.content" ></v-md-preview>
+    <!-- <v-md-editor :model-value="props.content" mode="preview"></v-md-editor> -->
   </div>
 </template>
 

@@ -7,8 +7,17 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { createPinia } from 'pinia'
 
-// import HospitalTop from '@/components/hospital_top/index.vue'
-// import HospitalBottom from '@/components/hospital_bottom/index.vue'
+// import '@kangc/v-md-editor/lib/style/base-editor.css'
+// import VMdEditor from '@kangc/v-md-editor'
+import VMdPreview from '@kangc/v-md-editor/lib/preview';
+import '@kangc/v-md-editor/lib/style/preview.css';
+import githubTheme from '@kangc/v-md-editor/lib/theme/github.js';
+import '@kangc/v-md-editor/lib/theme/style/github.css'
+import Prism from 'prismjs'
+
+VMdPreview.use(githubTheme, {
+  Prism,
+})
 
 const app = createApp(App)
 
@@ -23,5 +32,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 app.use(ElementPlus)
 app.use(router)
 app.use(pinia)
+app.use(VMdPreview)
+
 
 app.mount('#app')
